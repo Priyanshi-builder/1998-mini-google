@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PageRank Visualizer — Modern</title>
+<style>
+:root {
+  --blue:#1a73e8; --blue-l:#e8f0fe;
+  --red:#ea4335;  --red-l:#fce8e6;
+  --grn:#34a853;  --grn-l:#e6f4ea;
+  --ylw:#fbbc04;  --ylw-l:#fef7e0;
+  --org:#fa7b17;  --pur:#9334e6;
+  --bg:#f8f9fa; --card:#fff;
+  --txt:#202124; --txt2:#5f6368; --txt3:#80868b;
+  --bdr:#dadce0;
+  --sh1:0 1px 2px rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+  --sh2:0 1px 2px rgba(60,64,67,.3),0 2px 6px 2px rgba(60,64,67,.15);
+  --r:12px; --rsm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+  background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5;}
+
+/* ── App bar ── */
+.appbar{background:#fff;box-shadow:0 1px 0 var(--bdr);padding:0 24px;
+  display:flex;align-items:center;height:64px;gap:16px;
+  position:sticky;top:0;z-index:200;}
+.logo{font-size:28px;font-weight:900;letter-spacing:-1px;display:flex;
+  font-family:'Arial Black',Arial,sans-serif;user-select:none;}
+.lG{color:#4285F4}.lo{color:#EA4335}.lo2{color:#FBBC04}
+.lg{color:#4285F4}.ll{color:#34A853}.le{color:#EA4335}
+.sep{width:1px;height:32px;background:var(--bdr);}
+.apptitle{font-size:18px;font-weight:500;color:var(--txt2);}
+
+/* ── Tabs ── */
+.tabnav{background:#fff;display:flex;padding:0 24px;
+  border-bottom:1px solid var(--bdr);overflow-x:auto;}
+.tabbtn{padding:0 20px;height:48px;border:none;background:none;
+  font-size:14px;font-weight:500;color:var(--txt2);cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+  border-bottom:3px solid transparent;transition:color .2s,border-color .2s;
+  white-space:nowrap;user-select:none;font-family:inherit;}
+.tabbtn:hover{color:var(--blue);}
+.tabbtn.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+/* ── Main ── */
+.main{padding:24px;max-width:1200px;margin:0 auto;}
+.tabpanel{display:none;}.tabpanel.active{display:block;}
+
+/* ── Layout ── */
+.simgrid{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+.resgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:768px){.simgrid,.resgrid{grid-template-columns:1fr;}}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh1);overflow:hidden;}
+.cardh{padding:14px 20px 11px;border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:12px;}
+.cardico{width:36px;height:36px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.cardtitle{font-size:15px;font-weight:600;}
+.cardsub{font-size:11px;color:var(--txt2);margin-top:1px;}
+.cardb{padding:16px 20px;}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;
+  border:none;border-radius:24px;font-size:14px;font-weight:500;
+  font-family:inherit;cursor:pointer;user-select:none;
+  transition:background .2s,box-shadow .2s,transform .1s;}
+.btn:hover{box-shadow:var(--sh2);transform:translateY(-1px);}
+.btn:active{transform:translateY(0);box-shadow:none;}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-blue{background:var(--blue);color:#fff;}.btn-blue:hover{background:#1557b0;}
+.btn-red{background:var(--red);color:#fff;}.btn-red:hover{background:#c62828;}
+.btn-grn{background:var(--grn);color:#fff;}.btn-grn:hover{background:#2e7d32;}
+.btn-out{background:#fff;color:var(--blue);border:1px solid var(--bdr);}
+.btn-out:hover{background:var(--blue-l);border-color:var(--blue);}
+.btn-sm{padding:7px 15px;font-size:13px;}
+.ctrlrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
+
+/* ── Speed ── */
+.speedrow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);}
+select{padding:6px 10px;border:1px solid var(--bdr);border-radius:8px;
+  font-size:13px;font-family:inherit;background:#fff;color:var(--txt);cursor:pointer;}
+
+/* ── Progress ── */
+.progwrap{margin-bottom:12px;}
+.proglbl{display:flex;justify-content:space-between;font-size:12px;
+  color:var(--txt2);margin-bottom:4px;}
+.progbg{height:7px;background:var(--bdr);border-radius:4px;overflow:hidden;}
+.progfill{height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--blue),var(--grn));
+  transition:width .15s ease;width:0%;}
+
+/* ── Roll counter ── */
+.rollwrap{text-align:center;padding:8px 0;}
+.rollnum{font-size:38px;font-weight:900;color:var(--blue);
+  font-variant-numeric:tabular-nums;line-height:1;}
+.rolllbl{font-size:11px;color:var(--txt3);text-transform:uppercase;
+  letter-spacing:1px;margin-top:2px;}
+
+/* ── Dice ── */
+.dicewrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0;}
+.diceface{font-size:72px;line-height:1;user-select:none;}
+.diceface.spin{animation:diceSpin .25s ease-out;}
+@keyframes diceSpin{
+  0%{transform:rotate(0) scale(1);}
+  33%{transform:rotate(120deg) scale(1.15);}
+  66%{transform:rotate(240deg) scale(.9);}
+  100%{transform:rotate(360deg) scale(1);}
+}
+.dicepar{font-size:14px;font-weight:700;padding:5px 16px;border-radius:20px;text-align:center;}
+.par-odd{background:var(--blue-l);color:var(--blue);}
+.par-even{background:var(--red-l);color:var(--red);}
+.par-always{background:var(--grn-l);color:var(--grn);}
+
+/* ── Curr page ── */
+.currind{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:var(--blue-l);border-radius:10px;margin-bottom:10px;}
+.currtext{font-size:13px;color:var(--blue);font-weight:500;}
+
+/* ── Visit list ── */
+.visitlist{display:flex;flex-direction:column;gap:7px;}
+.visititem{display:flex;align-items:center;gap:8px;padding:5px 7px;
+  border-radius:8px;transition:background .2s;}
+.visititem.curpage{background:var(--blue-l);}
+.vbadge{width:22px;height:22px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:11px;
+  font-weight:700;color:#fff;flex-shrink:0;}
+.vname{flex:1;font-size:11px;color:var(--txt2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.vcnt{font-size:12px;font-weight:700;min-width:48px;text-align:right;}
+.vbarbg{width:60px;height:5px;background:var(--bdr);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.vbarfill{height:100%;border-radius:3px;transition:width .3s;}
+
+/* ── Log ── */
+.logbox{height:120px;overflow-y:auto;background:#f8f9fa;border:1px solid var(--bdr);
+  border-radius:8px;padding:8px 10px;font-size:11px;
+  font-family:'Courier New',Courier,monospace;color:var(--txt2);}
+.logitem{display:flex;gap:5px;padding:2px 0;
+  border-bottom:1px dashed var(--bdr);align-items:center;}
+.logitem:last-child{border-bottom:none;}
+.lnum{color:var(--txt3);min-width:40px;}
+.ldice{color:var(--blue);font-weight:700;}
+.lpar{color:var(--org);font-style:italic;min-width:38px;}
+.lto{font-weight:700;color:var(--grn);}
+
+/* ── Info banners ── */
+.info{background:var(--blue-l);border-left:4px solid var(--blue);
+  border-radius:0 var(--rsm) var(--rsm) 0;padding:12px 16px;
+  font-size:13px;line-height:1.6;margin-bottom:14px;}
+.info strong{color:var(--blue);}
+.info.grn{background:var(--grn-l);border-left-color:var(--grn);}
+.info.grn strong{color:var(--grn);}
+.info.ylw{background:var(--ylw-l);border-left-color:var(--ylw);}
+
+/* ── Search ── */
+.searchwrap{display:flex;align-items:center;border:1px solid var(--bdr);
+  border-radius:28px;overflow:hidden;background:#fff;
+  box-shadow:var(--sh1);max-width:600px;margin-bottom:20px;
+  transition:box-shadow .2s;}
+.searchwrap:focus-within{box-shadow:var(--sh2);border-color:var(--blue);}
+.searchwrap input{flex:1;border:none;outline:none;padding:14px 20px;
+  font-size:16px;font-family:inherit;color:var(--txt);}
+.searchwrap button{padding:14px 24px;background:var(--blue);color:#fff;
+  border:none;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;
+  transition:background .2s;}
+.searchwrap button:hover{background:#1557b0;}
+
+/* ── Result cards ── */
+.rescard{padding:16px;border:1px solid var(--bdr);border-radius:var(--rsm);
+  margin-bottom:10px;background:#fff;position:relative;transition:box-shadow .2s;}
+.rescard:hover{box-shadow:var(--sh2);}
+.resranknum{position:absolute;top:12px;right:14px;font-size:28px;font-weight:900;
+  color:#f1f3f4;font-family:'Arial Black',Arial,sans-serif;}
+.restitle{display:block;font-size:16px;color:#1a0dab;text-decoration:none;
+  font-weight:500;margin-bottom:2px;padding-right:36px;}
+.restitle:hover{text-decoration:underline;}
+.resurl{font-size:12px;color:var(--grn);margin-bottom:5px;}
+.ressnip{font-size:13px;color:var(--txt2);line-height:1.6;}
+.ressnip em{background:#fff59d;font-style:normal;padding:0 2px;border-radius:2px;}
+.resscore{display:flex;align-items:center;gap:8px;margin-top:10px;
+  padding-top:8px;border-top:1px solid var(--bdr);}
+.reslbl{font-size:11px;color:var(--txt3);min-width:88px;}
+.resbarbg{flex:1;height:5px;background:var(--bdr);border-radius:3px;overflow:hidden;}
+.resbarfill{height:100%;border-radius:3px;}
+.resval{font-size:11px;font-weight:700;min-width:46px;text-align:right;}
+.rankchip{display:inline-flex;align-items:center;gap:3px;font-size:11px;
+  font-weight:600;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.cup{background:var(--grn-l);color:var(--grn);}
+.cdn{background:var(--red-l);color:var(--red);}
+.ceq{background:#f1f3f4;color:var(--txt2);}
+
+/* ── Panel heading ── */
+.panelh{display:flex;align-items:center;gap:12px;margin-bottom:14px;
+  padding-bottom:11px;border-bottom:2px solid var(--bdr);}
+.panelico{width:40px;height:40px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:20px;}
+.phttl{font-size:15px;font-weight:600;}
+.phsub{font-size:12px;color:var(--txt2);}
+.noresult{padding:32px;text-align:center;color:var(--txt3);font-style:italic;}
+
+/* ── Graph table ── */
+.prtable{width:100%;border-collapse:collapse;font-size:13px;}
+.prtable th{background:var(--blue);color:#fff;padding:10px 14px;text-align:left;
+  font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.5px;}
+.prtable td{padding:11px 14px;border-bottom:1px solid var(--bdr);}
+.prtable tr:last-child td{border-bottom:none;}
+.prtable tr:hover td{background:#f8f9fa;}
+.nodepill{display:inline-flex;align-items:center;padding:2px 10px;
+  border-radius:10px;color:#fff;font-size:11px;font-weight:700;}
+.minibarbg{display:inline-block;width:80px;height:8px;background:var(--bdr);
+  border-radius:4px;overflow:hidden;vertical-align:middle;}
+.minibarfill{height:100%;border-radius:4px;display:block;}
+
+/* ── Chips ── */
+.chb{background:var(--blue-l);color:var(--blue);padding:2px 8px;
+  border-radius:10px;font-size:11px;font-weight:600;}
+.chr{background:var(--red-l);color:var(--red);padding:2px 8px;
+  border-radius:10px;font-size:11px;font-weight:600;}
+.chg{background:var(--grn-l);color:var(--grn);padding:2px 8px;
+  border-radius:10px;font-size:11px;font-weight:600;}
+.chp{background:#f3e8fd;color:var(--pur);padding:2px 8px;
+  border-radius:10px;font-size:11px;font-weight:600;}
+
+/* ── Fade in ── */
+.fadein{animation:fadeIn .3s ease-out;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#bdc1c6;}
+
+/* ── SVG edge dash ── */
+@keyframes dashFlow{from{stroke-dashoffset:16;}to{stroke-dashoffset:0;}}
+.edge-on{animation:dashFlow .25s linear infinite;stroke-dasharray:7 4;}
+</style>
+</head>
+<body>
+
+<!-- ══════ APP BAR ══════ -->
+<div class="appbar">
+  <div class="logo">
+    <span class="lG">G</span><span class="lo">o</span><span class="lo2">o</span>
+    <span class="lg">g</span><span class="ll">l</span><span class="le">e</span>
+  </div>
+  <div class="sep"></div>
+  <div class="apptitle">PageRank Visualizer</div>
+</div>
+
+<!-- ══════ TABS ══════ -->
+<div class="tabnav">
+  <button class="tabbtn active" onclick="switchTab('simulate',this)">🎲 Simulate</button>
+  <button class="tabbtn" onclick="switchTab('search',this)">🔍 Search</button>
+  <button class="tabbtn" onclick="switchTab('graph',this)">📊 Web Graph</button>
+</div>
+
+<!-- ══════ MAIN ══════ -->
+<div class="main">
+
+<!-- ══════ TAB: SIMULATE ══════ -->
+<div class="tabpanel active" id="tab-simulate">
+  <div class="simgrid">
+
+    <!-- Graph card -->
+    <div class="card">
+      <div class="cardh">
+        <div class="cardico" style="background:#e8f0fe;">🌐</div>
+        <div>
+          <div class="cardtitle">Web Link Graph</div>
+          <div class="cardsub">🟣 always &nbsp;|&nbsp; 🔵 odd roll → link 1 &nbsp;|&nbsp; 🔴 even roll → link 2</div>
+        </div>
+      </div>
+      <div style="padding:12px;">
+        <svg id="graphSvg" viewBox="0 0 540 420" width="100%" style="display:block;"></svg>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Dice -->
+      <div class="card">
+        <div class="cardh">
+          <div class="cardico" style="background:var(--ylw-l);">🎲</div>
+          <div>
+            <div class="cardtitle">Dice Roll</div>
+            <div class="cardsub">1,3,5 = odd · 2,4,6 = even</div>
+          </div>
+        </div>
+        <div class="cardb">
+          <div class="dicewrap">
+            <div class="diceface" id="diceFace">⚀</div>
+            <div class="dicepar par-always" id="dicePar">Press Step or Play</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Position + counter -->
+      <div class="card">
+        <div class="cardh">
+          <div class="cardico" style="background:var(--grn-l);">🧭</div>
+          <div class="cardtitle">Surfer Position</div>
+        </div>
+        <div class="cardb">
+          <div class="currind">
+            <span style="font-size:20px;">📍</span>
+            <span class="currtext" id="currPage">Page 1 · pune-food-guide.com</span>
+          </div>
+          <div class="rollwrap">
+            <div class="rollnum" id="rollNum">0</div>
+            <div class="rolllbl">/ 100,000 rolls</div>
+          </div>
+          <div class="progwrap" style="margin-top:8px;">
+            <div class="proglbl">
+              <span>Progress</span><span id="progPct">0%</span>
+            </div>
+            <div class="progbg"><div class="progfill" id="progFill"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="cardb">
+          <div class="ctrlrow">
+            <button class="btn btn-blue btn-sm" onclick="doStep()">⏭ Step</button>
+            <button class="btn btn-grn btn-sm" id="btnPlay" onclick="togglePlay()">▶ Play</button>
+            <button class="btn btn-out btn-sm" onclick="doReset()">↺ Reset</button>
+          </div>
+          <div class="ctrlrow">
+            <button class="btn btn-red btn-sm" onclick="doInstant()">⚡ Run 100k</button>
+            <div class="speedrow">
+              Speed:
+              <select id="speedSel">
+                <option value="800">1× slow</option>
+                <option value="160">5×</option>
+                <option value="40" selected>25×</option>
+                <option value="8">125×</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visit counts -->
+      <div class="card">
+        <div class="cardh">
+          <div class="cardico" style="background:#f3e8fd;">📈</div>
+          <div>
+            <div class="cardtitle">Visit Counts</div>
+            <div class="cardsub">PageRank ∝ visits / total</div>
+          </div>
+        </div>
+        <div class="cardb">
+          <div class="visitlist" id="visitList"></div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+  </div><!-- /simgrid -->
+
+  <!-- Log -->
+  <div class="card" style="margin-top:16px;">
+    <div class="cardh">
+      <div class="cardico" style="background:#f1f3f4;">📜</div>
+      <div>
+        <div class="cardtitle">Step Log</div>
+        <div class="cardsub">Last 15 rolls — newest on top</div>
+      </div>
+    </div>
+    <div class="cardb">
+      <div class="logbox" id="logBox">
+        <div style="color:var(--txt3);font-style:italic;">Click Step or Play to begin…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB: SEARCH ══════ -->
+<div class="tabpanel" id="tab-search">
+  <div class="info ylw">
+    💡 <strong>Tip:</strong> Click ⚡ Run 100k first to get accurate PageRank scores, then search!
+    The more rolls you simulate, the better the PageRank estimate.
+  </div>
+  <div class="searchwrap">
+    <input type="text" id="searchQ" value="pizza"
+      placeholder='Try "pizza", "pune", "chai", "dosa"…'>
+    <button onclick="doSearch()">🔍 Search</button>
+  </div>
+  <div class="resgrid">
+    <div>
+      <div class="panelh">
+        <div class="panelico" style="background:var(--blue-l);">📄</div>
+        <div>
+          <div class="phttl">Traditional Search</div>
+          <div class="phsub">Rank by keyword frequency only</div>
+        </div>
+      </div>
+      <div class="info" style="margin-bottom:12px;">
+        Counts how many times each query word appears. More mentions = higher rank.
+        Easy to fool — just stuff keywords into the page!
+      </div>
+      <div id="tradResults"><div class="noresult">Search something above ↑</div></div>
+    </div>
+    <div>
+      <div class="panelh">
+        <div class="panelico" style="background:var(--red-l);">🔗</div>
+        <div>
+          <div class="phttl">PageRank™ Search</div>
+          <div class="phsub">Rank by importance × relevance</div>
+        </div>
+      </div>
+      <div class="info grn" style="margin-bottom:12px;">
+        PageRank (from dice simulation) × keyword hits = final score.
+        Pages visited more by the random surfer are considered more <strong>trusted</strong>.
+      </div>
+      <div id="prResults"><div class="noresult">Search something above ↑</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB: GRAPH ══════ -->
+<div class="tabpanel" id="tab-graph">
+  <div class="info" style="margin-bottom:20px;">
+    <strong>🎲 Dice Navigation Rules:</strong><br>
+    Pages with <strong>1 link</strong>: always go there (dice ignored).<br>
+    Pages with <strong>2 links</strong>: <strong>odd (1,3,5)</strong> → first link &nbsp;|&nbsp;
+    <strong>even (2,4,6)</strong> → second link.<br>
+    After 100,000 dice rolls, visit frequency = <strong>PageRank score</strong>.
+  </div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="cardh">
+      <div class="cardico" style="background:var(--blue-l);">🌐</div>
+      <div class="cardtitle">Pages, Links &amp; PageRank</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="prtable"><thead><tr>
+        <th>#</th><th>Domain</th><th>Title</th>
+        <th>Links To</th><th>Linked By</th>
+        <th>Dice Rule</th><th>PR Score</th><th>PR Rank</th>
+      </tr></thead>
+      <tbody id="graphBody"></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="cardh">
+      <div class="cardico" style="background:#f3e8fd;">📊</div>
+      <div class="cardtitle">PageRank Bar Chart</div>
+    </div>
+    <div class="cardb" id="prChart"></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════
+const pages = [
+  { id:1, domain:'pune-food-guide.com',     title:'Where to Eat in Pune',
+    text:'Where to eat in Pune - vada pav and biryani and pizza',           links_to:[2] },
+  { id:2, domain:'best-pizza-pune.com',     title:'Best Pizza in Pune',
+    text:'Fresh wood-fired pizza made daily - try our cheese pizza',        links_to:[1,3] },
+  { id:3, domain:'college-canteen-blog.com',title:'College Canteen Reviews',
+    text:'Student reviews of canteen food and chai and Friday pizza',       links_to:[2,4] },
+  { id:4, domain:'pizza-recipes-home.com',  title:'Pizza Recipes at Home',
+    text:'Make pizza at home - pizza dough and pizza sauce',               links_to:[2] },
+  { id:5, domain:'cheap-eats-pune.com',     title:'Cheap Eats in Pune',
+    text:'Good food under 100 rupees - misal and dosa and pizza slices',   links_to:[2] },
+  { id:6, domain:'pizza-pizza-pizza.com',   title:'Pizza Pizza Pizza',
+    text:'pizza pizza pizza pizza pizza pizza pizza pizza pizza pizza',    links_to:[1] },
+];
+
+const N = pages.length;
+const NC = ['#4285F4','#EA4335','#FBBC04','#34A853','#FA7B17','#9334E6']; // node colours
+const NP = [[155,80],[280,210],[410,80],[410,330],[155,330],[40,210]];     // positions
+const NR = 26; // node radius
+const DICE = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+const TOTAL_ROLLS = 100000;
+
+// 0-indexed link arrays
+const outLinks = pages.map(p => p.links_to.map(id => id-1));
+const inLinks  = Array.from({length:N},()=>[]);
+pages.forEach((_,i) => outLinks[i].forEach(j => inLinks[j].push(i)));
+
+// ═══════════════════════════════════════════════════
+// EDGE DEFINITIONS (from-idx, to-idx, curved, dir, label)
+// dir controls which side the curve bows to
+// ═══════════════════════════════════════════════════
+const edgeDefs = [
+  {f:0,t:1,c:true, d:+1, lbl:'always', lc:'#9334E6'}, // 1→2
+  {f:1,t:0,c:true, d:+1, lbl:'odd',    lc:'#4285F4'}, // 2→1
+  {f:1,t:2,c:true, d:+1, lbl:'even',   lc:'#EA4335'}, // 2→3
+  {f:2,t:1,c:true, d:+1, lbl:'odd',    lc:'#4285F4'}, // 3→2
+  {f:2,t:3,c:false,d:0,  lbl:'even',   lc:'#EA4335'}, // 3→4
+  {f:3,t:1,c:false,d:0,  lbl:'always', lc:'#9334E6'}, // 4→2
+  {f:4,t:1,c:false,d:0,  lbl:'always', lc:'#9334E6'}, // 5→2
+  {f:5,t:0,c:false,d:0,  lbl:'always', lc:'#9334E6'}, // 6→1
+];
+
+function edgePath(ed) {
+  const [x1,y1]=NP[ed.f], [x2,y2]=NP[ed.t], r=NR;
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+  if (!ed.c) {
+    const ux=dx/len, uy=dy/len;
+    return {t:'L', sx:x1+r*ux, sy:y1+r*uy, ex:x2-r*ux, ey:y2-r*uy};
+  }
+  // Perpendicular offset for control point
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  const px=-dy/len, py=dx/len;      // unit perp
+  const off=ed.d*len*0.28;
+  const cpx=mx+px*off, cpy=my+py*off;
+  // start: NR from x1 toward cp
+  const sd=Math.hypot(cpx-x1,cpy-y1);
+  const sx=x1+r*(cpx-x1)/sd, sy=y1+r*(cpy-y1)/sd;
+  // end: NR from x2 toward cp (back along end tangent)
+  const ed2=Math.hypot(x2-cpx,y2-cpy);
+  const ex=x2-r*(x2-cpx)/ed2, ey=y2-r*(y2-cpy)/ed2;
+  // mid-point on bezier at t=0.5 for label placement
+  const lx=.25*sx+.5*cpx+.25*ex, ly=.25*sy+.5*cpy+.25*ey;
+  return {t:'Q', sx, sy, cpx, cpy, ex, ey, lx, ly};
+}
+
+const ePaths = edgeDefs.map(edgePath);
+
+// ═══════════════════════════════════════════════════
+// SIMULATION STATE
+// ═══════════════════════════════════════════════════
+const sim = {
+  cur:0, rolls:0,
+  visits:new Array(N).fill(0),
+  pr:new Array(N).fill(1/N),
+  running:false, tid:null,
+  dv:1, parity:'always',
+  from:-1, to:-1, activeEdge:-1,
+  log:[],
+};
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION — dice odd/even rule
+// ═══════════════════════════════════════════════════
+function navigate(cur) {
+  const lks = outLinks[cur];
+  const dv  = Math.floor(Math.random()*6)+1;
+  if (lks.length===1) return {next:lks[0], dv, parity:'always'};
+  const odd = dv%2===1;
+  return {next: odd?lks[0]:lks[1], dv, parity: odd?'odd':'even'};
+}
+
+function findEdge(f,t){ return edgeDefs.findIndex(e=>e.f===f&&e.t===t); }
+
+// ═══════════════════════════════════════════════════
+// STEP
+// ═══════════════════════════════════════════════════
+function doStep() {
+  if (sim.rolls>=TOTAL_ROLLS) { stop(); return; }
+  const {next,dv,parity} = navigate(sim.cur);
+  sim.from=sim.cur; sim.to=next;
+  sim.dv=dv; sim.parity=parity;
+  sim.activeEdge=findEdge(sim.from,next);
+  sim.visits[next]++;
+  sim.rolls++;
+  sim.cur=next;
+  recomputePR();
+  sim.log.unshift({roll:sim.rolls,dv,parity,from:sim.from,to:next});
+  if (sim.log.length>15) sim.log.pop();
+  updateUI();
+  if (sim.rolls>=TOTAL_ROLLS) stop();
+}
+
+function recomputePR() {
+  const tot=sim.visits.reduce((a,b)=>a+b,0);
+  sim.pr=sim.visits.map(v=>tot>0?v/tot:0);
+}
+
+function doReset() {
+  stop();
+  sim.cur=0; sim.rolls=0;
+  sim.visits=new Array(N).fill(0);
+  sim.pr=new Array(N).fill(1/N);
+  sim.dv=1; sim.parity='always';
+  sim.from=-1; sim.to=-1; sim.activeEdge=-1;
+  sim.log=[];
+  updateUI();
+}
+
+function doInstant() {
+  stop();
+  sim.rolls=0; sim.visits=new Array(N).fill(0);
+  sim.activeEdge=-1; sim.log=[];
+  let cur=sim.cur;
+  for (let i=0;i<TOTAL_ROLLS;i++) {
+    const lks=outLinks[cur];
+    const dv=Math.floor(Math.random()*6)+1;
+    cur = lks.length===1 ? lks[0] : (dv%2===1?lks[0]:lks[1]);
+    sim.visits[cur]++;
+  }
+  sim.rolls=TOTAL_ROLLS; sim.cur=cur;
+  sim.dv=Math.floor(Math.random()*6)+1;
+  sim.parity='always';
+  recomputePR();
+  sim.log.push({roll:TOTAL_ROLLS,dv:sim.dv,parity:'complete',from:0,to:cur});
+  updateUI();
+}
+
+function togglePlay() {
+  sim.running ? stop() : play();
+}
+function play() {
+  if (sim.rolls>=TOTAL_ROLLS) return;
+  sim.running=true;
+  document.getElementById('btnPlay').textContent='⏸ Pause';
+  const ms=parseInt(document.getElementById('speedSel').value);
+  sim.tid=setInterval(()=>{doStep();if(sim.rolls>=TOTAL_ROLLS)stop();},ms);
+}
+function stop() {
+  sim.running=false;
+  if(sim.tid){clearInterval(sim.tid);sim.tid=null;}
+  document.getElementById('btnPlay').textContent='▶ Play';
+}
+
+// ═══════════════════════════════════════════════════
+// UPDATE UI
+// ═══════════════════════════════════════════════════
+function updateUI() {
+  updateDice(); updateCurr(); updateProgress();
+  updateVisits(); updateLog(); updateSVG();
+}
+
+function updateDice() {
+  const f=document.getElementById('diceFace');
+  const p=document.getElementById('dicePar');
+  f.textContent=DICE[sim.dv-1];
+  f.classList.remove('spin'); void f.offsetWidth; f.classList.add('spin');
+  const ptext = sim.parity==='odd'   ? `🎯 ODD (${sim.dv}) → Link 1`
+               :sim.parity==='even'  ? `🎯 EVEN (${sim.dv}) → Link 2`
+               :sim.parity==='complete'?'✅ 100k complete!'
+               :`🔗 Only 1 link (always)`;
+  p.textContent=ptext;
+  p.className='dicepar '+(sim.parity==='odd'?'par-odd':sim.parity==='even'?'par-even':'par-always');
+}
+
+function updateCurr() {
+  const pg=pages[sim.cur];
+  document.getElementById('currPage').textContent=`Page ${pg.id} · ${pg.domain}`;
+}
+
+function updateProgress() {
+  const pct=Math.min(100,(sim.rolls/TOTAL_ROLLS)*100).toFixed(1);
+  document.getElementById('rollNum').textContent=sim.rolls.toLocaleString();
+  document.getElementById('progPct').textContent=pct+'%';
+  document.getElementById('progFill').style.width=pct+'%';
+}
+
+function updateVisits() {
+  const mx=Math.max(...sim.visits,1);
+  document.getElementById('visitList').innerHTML=pages.map((p,i)=>`
+    <div class="visititem ${i===sim.cur?'curpage':''}">
+      <div class="vbadge" style="background:${NC[i]}">${p.id}</div>
+      <div class="vname" title="${p.domain}">${p.domain.split('.')[0]}</div>
+      <div class="vbarbg">
+        <div class="vbarfill" style="width:${Math.round(sim.visits[i]/mx*100)}%;background:${NC[i]}"></div>
+      </div>
+      <div class="vcnt">${sim.visits[i].toLocaleString()}</div>
+    </div>`).join('');
+}
+
+function updateLog() {
+  if (!sim.log.length) {
+    document.getElementById('logBox').innerHTML=
+      '<div style="color:var(--txt3);font-style:italic;">Log appears here…</div>';
+    return;
+  }
+  document.getElementById('logBox').innerHTML=sim.log.map(e=>`
+    <div class="logitem">
+      <span class="lnum">#${e.roll.toLocaleString()}</span>
+      <span class="ldice">🎲${e.dv}</span>
+      <span class="lpar">${e.parity}</span>
+      <span>P${e.from+1}</span>
+      <span style="color:var(--txt3)">→</span>
+      <span class="lto">P${e.to+1} (${pages[e.to].domain.split('.')[0]})</span>
+    </div>`).join('');
+  document.getElementById('logBox').scrollTop=0;
+}
+
+// ═══════════════════════════════════════════════════
+// SVG GRAPH
+// ═══════════════════════════════════════════════════
+function buildSVG() {
+  const svg=document.getElementById('graphSvg');
+  svg.innerHTML=`
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+      markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#bdc1c6"/>
+    </marker>
+    <marker id="arr-on" viewBox="0 0 10 10" refX="9" refY="5"
+      markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1a73e8"/>
+    </marker>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="dropshadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".25"/>
+    </filter>
+  </defs>`;
+
+  // Edges
+  const eg=mkG('edgeG'); svg.appendChild(eg);
+  edgeDefs.forEach((ed,i)=>{
+    const ep=ePaths[i];
+    const d=ep.t==='L'
+      ?`M${ep.sx},${ep.sy} L${ep.ex},${ep.ey}`
+      :`M${ep.sx},${ep.sy} Q${ep.cpx},${ep.cpy} ${ep.ex},${ep.ey}`;
+    const path=svgEl('path');
+    path.id=`edge-${i}`;
+    setA(path,{d,fill:'none',stroke:'#dadce0','stroke-width':'2','marker-end':'url(#arr)'});
+    eg.appendChild(path);
+
+    // Label
+    const lx=ep.t==='L'?(ep.sx+ep.ex)/2:ep.lx;
+    const ly=ep.t==='L'?(ep.sy+ep.ey)/2:ep.ly;
+    const lt=svgEl('text');
+    setA(lt,{x:lx,y:ly-6,'text-anchor':'middle','font-size':'10',
+      fill:ed.lc,'font-weight':'700','font-family':'Arial,sans-serif'});
+    lt.textContent= ed.lbl==='always'?'★':ed.lbl;
+    eg.appendChild(lt);
+  });
+
+  // Nodes
+  const ng=mkG('nodeG'); svg.appendChild(ng);
+  pages.forEach((p,i)=>{
+    const [cx,cy]=NP[i];
+    const g=mkG(`node-${i}`);
+
+    // Glow ring
+    const ring=svgEl('circle');
+    ring.id=`ring-${i}`;
+    setA(ring,{cx,cy,r:NR+9,fill:'none',stroke:NC[i],'stroke-width':'3',opacity:'0'});
+    g.appendChild(ring);
+
+    // Circle
+    const c=svgEl('circle');
+    setA(c,{cx,cy,r:NR,fill:NC[i],stroke:'white','stroke-width':'3',filter:'url(#dropshadow)'});
+    g.appendChild(c);
+
+    // ID
+    const nt=svgEl('text');
+    setA(nt,{x:cx,y:cy+1,'text-anchor':'middle','dominant-baseline':'middle',
+      'font-size':'17','font-weight':'900',fill:'white','font-family':'Arial,sans-serif'});
+    nt.textContent=p.id;
+    g.appendChild(nt);
+
+    // Domain
+    const dl=svgEl('text');
+    const dshort=p.domain.length>18?p.domain.slice(0,17)+'…':p.domain;
+    setA(dl,{x:cx,y:cy+NR+13,'text-anchor':'middle',
+      'font-size':'9',fill:'#5f6368','font-family':'Arial,sans-serif'});
+    dl.textContent=dshort;
+    g.appendChild(dl);
+
+    // PR label
+    const prl=svgEl('text');
+    prl.id=`pr-${i}`;
+    setA(prl,{x:cx,y:cy-NR-5,'text-anchor':'middle',
+      'font-size':'10',fill:'#1a73e8','font-weight':'700','font-family':'Arial,sans-serif'});
+    prl.textContent='';
+    g.appendChild(prl);
+
+    ng.appendChild(g);
+  });
+
+  // Surfer indicator
+  const [sx0,sy0]=NP[0];
+  const surfer=svgEl('circle');
+  surfer.id='surfer';
+  setA(surfer,{cx:sx0,cy:sy0-NR-8,r:7,fill:'white',
+    stroke:'#1a73e8','stroke-width':'3',filter:'url(#glow)'});
+  svg.appendChild(surfer);
+  const surferTxt=svgEl('text');
+  surferTxt.id='surferTxt';
+  setA(surferTxt,{x:sx0,y:sy0-NR-7,'text-anchor':'middle',
+    'dominant-baseline':'middle','font-size':'9'});
+  surferTxt.textContent='🏃';
+  svg.appendChild(surferTxt);
+}
+
+function updateSVG() {
+  // Active edge
+  edgeDefs.forEach((_,i)=>{
+    const el=document.getElementById(`edge-${i}`);
+    if(!el) return;
+    if(i===sim.activeEdge){
+      setA(el,{stroke:'#1a73e8','stroke-width':'3','marker-end':'url(#arr-on)'});
+      el.classList.add('edge-on');
+    } else {
+      setA(el,{stroke:'#dadce0','stroke-width':'2','marker-end':'url(#arr)'});
+      el.classList.remove('edge-on');
+    }
+  });
+  // Glow rings
+  pages.forEach((_,i)=>{
+    const r=document.getElementById(`ring-${i}`);
+    if(r) r.setAttribute('opacity', i===sim.cur?'1':'0');
+  });
+  // Surfer position
+  const [sx,sy]=NP[sim.cur];
+  const s=document.getElementById('surfer');
+  const st=document.getElementById('surferTxt');
+  if(s){setA(s,{cx:sx,cy:sy-NR-8});}
+  if(st){setA(st,{x:sx,y:sy-NR-7});}
+  // PR labels on nodes
+  pages.forEach((_,i)=>{
+    const el=document.getElementById(`pr-${i}`);
+    if(el) el.textContent=sim.rolls>0?`${(sim.pr[i]*100).toFixed(1)}%`:'';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// GRAPH TABLE + BARCHART
+// ═══════════════════════════════════════════════════
+function updateGraphTab() {
+  const mx=Math.max(...sim.pr);
+  const sortedIdx=[...sim.pr].map((s,i)=>({i,s})).sort((a,b)=>b.s-a.s);
+  const rank={};sortedIdx.forEach((x,r)=>rank[x.i]=r+1);
+
+  document.getElementById('graphBody').innerHTML=pages.map((p,i)=>{
+    const lo=outLinks[i].map(j=>pages[j].id).join(', ')||'—';
+    const li=inLinks[i].map(j=>pages[j].id).join(', ')||'none';
+    const rule=outLinks[i].length===2
+      ?'<span class="chb">odd→L1</span> <span class="chr">even→L2</span>'
+      :'<span class="chg">always→L1</span>';
+    const bp=mx>0?Math.round(sim.pr[i]/mx*100):0;
+    return `<tr>
+      <td><span class="nodepill" style="background:${NC[i]}">${p.id}</span></td>
+      <td style="font-weight:500;">${p.domain}</td>
+      <td style="color:var(--txt2);font-size:12px;">${p.title}</td>
+      <td>${lo}</td><td>${li}</td><td>${rule}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="minibarbg">
+            <span class="minibarfill" style="width:${bp}%;background:${NC[i]}"></span>
+          </div>
+          <strong>${(sim.pr[i]*100).toFixed(2)}%</strong>
+        </div>
+      </td>
+      <td style="font-weight:700;font-size:15px;color:${NC[i]};">#${rank[i]}</td>
+    </tr>`;
+  }).join('');
+
+  const chart=[...pages.map((p,i)=>({p,i,s:sim.pr[i]}))].sort((a,b)=>b.s-a.s);
+  document.getElementById('prChart').innerHTML=chart.map((x,r)=>{
+    const w=mx>0?Math.round(x.s/mx*180):0;
+    return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;">
+      <span style="font-size:12px;font-weight:700;color:var(--txt3);width:24px;text-align:right;">#${r+1}</span>
+      <div class="vbadge" style="background:${NC[x.i]}">${x.p.id}</div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:500;margin-bottom:3px;">${x.p.domain}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:${w}px;height:14px;background:${NC[x.i]};border-radius:3px;transition:width .5s;"></div>
+          <span style="font-size:12px;font-weight:700;">${(x.s*100).toFixed(2)}%</span>
+          <span style="font-size:11px;color:var(--txt3);">${sim.visits[x.i].toLocaleString()} visits</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════
+function kwScore(idx, q) {
+  const ws=q.toLowerCase().split(/\s+/).filter(Boolean);
+  const tx=(pages[idx].title+' '+pages[idx].text).toLowerCase();
+  let n=0;
+  ws.forEach(w=>{let p=0;while((p=tx.indexOf(w,p))!==-1){n++;p+=w.length;}});
+  return n;
+}
+
+function prScore(idx,q){
+  const k=kwScore(idx,q);
+  return k===0?0:sim.pr[idx]*(1+k);
+}
+
+function hl(text,q){
+  const ws=q.toLowerCase().split(/\s+/).filter(Boolean);
+  let r=esc(text);
+  ws.forEach(w=>{
+    const re=new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    r=r.replace(re,'<em>$1</em>');
+  });
+  return r;
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function doSearch() {
+  const q=document.getElementById('searchQ').value.trim(); if(!q) return;
+  const tr=pages.map((_,i)=>({i,s:kwScore(i,q)})).sort((a,b)=>b.s-a.s||a.i-b.i);
+  const pr=pages.map((_,i)=>({i,s:prScore(i,q)})).sort((a,b)=>b.s-a.s||a.i-b.i);
+  const tpos={},ppos={};
+  tr.forEach((x,r)=>tpos[x.i]=r+1);
+  pr.forEach((x,r)=>ppos[x.i]=r+1);
+  renderResults('tradResults',tr,q,'#4285F4','Keyword hits',(x,r)=>{
+    const p2=ppos[x.i]||0; const d=r-p2;
+    return !p2?'':d>0?`<span class="rankchip cup">▲ Rises to #${p2} in PageRank</span>`
+      :d<0?`<span class="rankchip cdn">▼ Falls to #${p2} in PageRank</span>`
+      :`<span class="rankchip ceq">= Same in PageRank</span>`;
+  });
+  renderResults('prResults',pr,q,'#EA4335','PR × Relevance',(x,r)=>{
+    const t2=tpos[x.i]||0; const d=t2-r;
+    return !t2?'':d>0?`<span class="rankchip cup">▲ +${d} vs Traditional</span>`
+      :d<0?`<span class="rankchip cdn">▼ ${d} vs Traditional</span>`
+      :`<span class="rankchip ceq">= Same rank</span>`;
+  });
+}
+
+function renderResults(cid, ranked, q, barClr, lbl, badgeFn) {
+  const el=document.getElementById(cid);
+  if (!ranked.some(r=>r.s>0)){
+    el.innerHTML=`<div class="noresult">No results for "<strong>${esc(q)}</strong>"</div>`; return;
+  }
+  const mx=ranked[0].s;
+  el.innerHTML=ranked.filter(r=>r.s>0).map((r,i)=>{
+    const p=pages[r.i];
+    const pct=mx>0?Math.round(r.s/mx*100):0;
+    return `
+    <div class="rescard fadein">
+      <div class="resranknum">${i+1}</div>
+      <a class="restitle" href="https://www.${p.domain}" target="_blank">${esc(p.title)}</a>
+      ${badgeFn(r,i+1)}
+      <div class="resurl">https://www.${p.domain}</div>
+      <div class="ressnip">${hl(p.text,q)}</div>
+      <div class="resscore">
+        <span class="reslbl">${lbl}:</span>
+        <div class="resbarbg">
+          <div class="resbarfill" style="width:${pct}%;background:${barClr}"></div>
+        </div>
+        <span class="resval" style="color:${barClr}">${r.s>=1?r.s.toFixed(2):r.s.toFixed(5)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// SVG HELPERS
+// ═══════════════════════════════════════════════════
+function svgEl(tag){ return document.createElementNS('http://www.w3.org/2000/svg',tag); }
+function mkG(id){ const g=svgEl('g'); g.id=id; return g; }
+function setA(el,attrs){ Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v)); }
+
+// ═══════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════
+function switchTab(id, btn) {
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='graph') updateGraphTab();
+  if(id==='search') doSearch();
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+buildSVG();
+updateUI();
+updateGraphTab();
+
+document.getElementById('speedSel').addEventListener('change',()=>{
+  if(sim.running){stop();play();}
+});
+document.getElementById('searchQ').addEventListener('keydown',e=>{
+  if(e.key==='Enter') doSearch();
+});
+</script>
+</body>
+</html>
